@@ -1953,6 +1953,10 @@ instance ultrafilter.is_lawful_monad : is_lawful_monad ultrafilter :=
 
 end
 
+lemma ultrafilter.eq_iff_val_le_val (u v : ultrafilter α) : u = v ↔ u.val ≤ v.val :=
+⟨assume h, by rw h; exact le_refl _,
+ assume h, by rw subtype.ext; apply ultrafilter_unique v.property u.property.1 h⟩
+
 end ultrafilter
 
 end filter
