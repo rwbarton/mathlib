@@ -657,7 +657,7 @@ closure_eq_of_is_closed is_closed_singleton
 /-- A T₂ space, also known as a Hausdorff space, is one in which for every
   `x ≠ y` there exists disjoint open sets around `x` and `y`. This is
   the most widely used of the separation axioms. -/
-class t2_space (α : Type u) [topological_space α] :=
+class t2_space (α : Type u) [topological_space α] : Prop :=
 (t2 : ∀x y, x ≠ y → ∃u v : set α, is_open u ∧ is_open v ∧ x ∈ u ∧ y ∈ v ∧ u ∩ v = ∅)
 
 lemma t2_separation [t2_space α] {x y : α} (h : x ≠ y) :
@@ -686,6 +686,23 @@ let ⟨u, v, hu, hv, hx, hy, huv⟩ := t2_space.t2 x y this in
 have u ∩ v ∈ (nhds x ⊓ nhds y).sets,
   from inter_mem_inf_sets (mem_nhds_sets hu hx) (mem_nhds_sets hv hy),
 h $ empty_in_sets_eq_bot.mp $ huv ▸ this
+
+lemma t2_iff_nhds : t2_space α ↔ ∀ {x y : α}, nhds x ⊓ nhds y ≠ ⊥ → x = y :=
+⟨assume h, by exactI λ x y, eq_of_nhds_neq_bot,
+ assume h, ⟨assume x y xy,
+   have nhds x ⊓ nhds y = ⊥ := classical.by_contradiction (mt h xy),
+   let ⟨u', hu', v', hv', u'v'⟩ := empty_in_sets_eq_bot.mpr this,
+       ⟨u, uu', uo, hu⟩ := mem_nhds_sets_iff.mp hu',
+       ⟨v, vv', vo, hv⟩ := mem_nhds_sets_iff.mp hv' in
+   ⟨u, v, uo, vo, hu, hv, disjoint.eq_bot $ disjoint_mono uu' vv' u'v'⟩⟩⟩
+
+lemma t2_iff_ultrafilter :
+  t2_space α ↔ ∀ f {x y : α}, is_ultrafilter f → f ≤ nhds x → f ≤ nhds y → x = y :=
+t2_iff_nhds.trans
+  ⟨assume h f x y u fx fy, h $ neq_bot_of_le_neq_bot u.1 (le_inf fx fy),
+   assume h x y xy,
+     let ⟨f, hf, uf⟩ := exists_ultrafilter xy in
+     h f uf (le_trans hf lattice.inf_le_left) (le_trans hf lattice.inf_le_right)⟩
 
 @[simp] lemma nhds_eq_nhds_iff {a b : α} [t2_space α] : nhds a = nhds b ↔ a = b :=
 ⟨assume h, eq_of_nhds_neq_bot $ by rw [h, inf_idem]; exact nhds_neq_bot, assume h, h ▸ rfl⟩
@@ -719,6 +736,27 @@ let ⟨t, ht₁, ht₂, ht₃⟩ := this in
   is_closed_compl_iff.mpr ht₁⟩
 
 end regularity
+
+section normality
+
+/-- A T₄ space, also known as a normal space (although this condition sometimes
+  omits T₂), is one in which for every pair of disjoint closed sets `C` and `D`,
+  there exist disjoint open sets containing `C` and `D` respectively. -/
+
+class normal_space (α : Type u) [topological_space α] extends t2_space α : Prop :=
+(normal : ∀{s t:set α}, is_closed s → is_closed t → s ∩ t = ∅ →
+  ∃u v, is_open u ∧ is_open v ∧ s ⊆ u ∧ t ⊆ v ∧ u ∩ v = ∅)
+
+instance normal_space.regular_space [topological_space α] [normal_space α] : regular_space α :=
+⟨assume s a hs as,
+   let ⟨u, v, uo, vo, su, av, uv⟩ :=
+     normal_space.normal hs is_closed_singleton (inter_singleton_eq_empty.mpr as) in
+   ⟨u, uo, su,
+    empty_in_sets_eq_bot.mp $ mem_inf_sets.mpr
+      ⟨v, mem_nhds_sets vo (by simpa using av), u, mem_principal_self u,
+       by rw [inter_comm, uv]⟩⟩⟩
+
+end normality
 
 /- generating sets -/
 
